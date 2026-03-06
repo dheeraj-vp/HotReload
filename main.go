@@ -12,6 +12,7 @@ import (
 	"hotreload/internal/cli"
 	"hotreload/internal/debouncer"
 	"hotreload/internal/logger"
+	"hotreload/internal/process"
 	"hotreload/internal/watcher"
 )
 
@@ -78,6 +79,9 @@ func main() {
 	// Initialize builder
 	b := builder.New(60 * time.Second)
 
+	// Initialize process manager
+	p := process.New()
+
 	// Start watching
 	go w.Start(ctx)
 
@@ -102,7 +106,16 @@ func main() {
 				slog.Info("build succeeded", 
 					"duration", result.Duration.String(),
 					"output", result.Output)
-				// TODO: Start/restart server in Phase 5
+				
+				// Start/restart server
+				err := p.Start(ctx, config.ExecCmd, config.Root)
+				if err != nil {
+					slog.Error("failed to start server", "error", err)
+				} else {
+					slog.Info("server started", 
+						"pid", p.PID(),
+						"uptime", p.Uptime().String())
+				}
 			} else {
 				slog.Error("build failed", 
 					"duration", result.Duration.String(),
