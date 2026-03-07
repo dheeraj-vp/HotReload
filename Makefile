@@ -9,14 +9,14 @@ build:
 # Run the demo server with hot reload
 demo:
 	@echo "🚀 Starting hot reload demo..."
-	@echo "📊 Open http://localhost:8080 to see the server"
-	@echo "✏️  Edit testserver/main.go to see hot reload in action!"
+	@echo "Open http://localhost:8080 to see the server"
+	@echo " Edit testserver/main.go to see hot reload in action!"
 	@if [ ! -f hotreload ]; then $(MAKE) build; fi
 	./hotreload --root ./testserver --build "go build -o ./testserver ./testserver/main.go" --exec "./testserver" --verbose
 
 # Run tests
 test:
-	@echo "🧪 Running tests..."
+	@echo "Running tests..."
 	go test ./... -v -cover
 
 # Clean build artifacts

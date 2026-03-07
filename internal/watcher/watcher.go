@@ -18,8 +18,8 @@ type FileWatcher struct {
 }
 
 type Event struct {
-	Path      string    // absolute file path
-	Op        Operation // Create, Write, Remove, Rename
+	Path      string
+	Op        Operation
 	Timestamp time.Time
 }
 
@@ -32,9 +32,6 @@ const (
 	OpRename
 )
 
-// New creates a FileWatcher for the given root directory
-// Recursively adds all subdirectories to watch list
-// Returns error if root doesn't exist or fsnotify fails
 func New(ctx context.Context, root string) (*FileWatcher, error) {
 	fsWatcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -44,11 +41,10 @@ func New(ctx context.Context, root string) (*FileWatcher, error) {
 	fw := &FileWatcher{
 		fsWatcher: fsWatcher,
 		root:      root,
-		events:    make(chan Event, 100), // Buffered channel
-		errors:    make(chan error, 10),   // Buffered channel
+		events:    make(chan Event, 100),
+		errors:    make(chan error, 10),
 	}
 
-	// Add root and all subdirectories
 	if err := fw.addRecursive(root); err != nil {
 		fsWatcher.Close()
 		return nil, err
@@ -58,9 +54,6 @@ func New(ctx context.Context, root string) (*FileWatcher, error) {
 	return fw, nil
 }
 
-// Start begins watching for file system events
-// Sends events to Events() channel
-// Runs until context is cancelled
 func (fw *FileWatcher) Start(ctx context.Context) error {
 	go func() {
 		defer close(fw.events)
@@ -95,17 +88,14 @@ func (fw *FileWatcher) Start(ctx context.Context) error {
 	return nil
 }
 
-// Events returns read-only channel of file change events
 func (fw *FileWatcher) Events() <-chan Event {
 	return fw.events
 }
 
-// Errors returns read-only channel of watcher errors
 func (fw *FileWatcher) Errors() <-chan error {
 	return fw.errors
 }
 
-// addRecursive adds directory and all subdirectories to watcher
 func (fw *FileWatcher) addRecursive(path string) error {
 	return filepath.Walk(path, func(walkPath string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -123,7 +113,7 @@ func (fw *FileWatcher) addRecursive(path string) error {
 		if info.IsDir() {
 			if err := fw.fsWatcher.Add(walkPath); err != nil {
 				slog.Warn("failed to watch directory", "path", walkPath, "error", err)
-				return nil // Continue walking other directories
+				return nil
 			}
 			slog.Debug("watching directory", "path", walkPath)
 		}
@@ -132,23 +122,19 @@ func (fw *FileWatcher) addRecursive(path string) error {
 	})
 }
 
-// handleFsnotifyEvent processes fsnotify events and filters them
 func (fw *FileWatcher) handleFsnotifyEvent(fsEvent fsnotify.Event) {
-	// Filter ignored paths
 	if ShouldIgnore(fsEvent.Name) {
 		slog.Debug("ignoring event", "path", fsEvent.Name, "op", fsEvent.Op)
 		return
 	}
 
-	// Convert fsnotify.Op to our Operation
 	var op Operation
 	switch {
 	case fsEvent.Op&fsnotify.Create == fsnotify.Create:
 		op = OpCreate
-		// If it's a new directory, add it to watch list
 		if info, err := os.Stat(fsEvent.Name); err == nil && info.IsDir() {
 			fw.handleDirCreate(fsEvent.Name)
-			return // Don't emit events for directories
+			return
 		}
 	case fsEvent.Op&fsnotify.Write == fsnotify.Write:
 		op = OpWrite
@@ -157,11 +143,9 @@ func (fw *FileWatcher) handleFsnotifyEvent(fsEvent fsnotify.Event) {
 	case fsEvent.Op&fsnotify.Rename == fsnotify.Rename:
 		op = OpRename
 	default:
-		// Unknown operation, ignore
 		return
 	}
 
-	// Only emit events for files (not directories)
 	if info, err := os.Stat(fsEvent.Name); err == nil && !info.IsDir() {
 		event := Event{
 			Path:      fsEvent.Name,
@@ -173,13 +157,11 @@ func (fw *FileWatcher) handleFsnotifyEvent(fsEvent fsnotify.Event) {
 		case fw.events <- event:
 			slog.Debug("file event", "path", event.Path, "op", op)
 		default:
-			// Channel full, drop event to prevent blocking
 			slog.Warn("event channel full, dropping event", "path", fsEvent.Name)
 		}
 	}
 }
 
-// handleDirCreate adds newly created directory to watch list
 func (fw *FileWatcher) handleDirCreate(path string) error {
 	if err := fw.addRecursive(path); err != nil {
 		slog.Warn("failed to watch new directory", "path", path, "error", err)
@@ -189,10 +171,7 @@ func (fw *FileWatcher) handleDirCreate(path string) error {
 	return nil
 }
 
-// getWatchCount returns the number of paths being watched
 func (fw *FileWatcher) getWatchCount() int {
-	// fsnotify doesn't expose the watch list count directly
-	// This is a rough estimate - we'll count directories in root
 	count := 0
 	filepath.Walk(fw.root, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info == nil {

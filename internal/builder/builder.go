@@ -13,7 +13,7 @@ import (
 
 type Result struct {
 	Success   bool
-	Output    string // Combined stdout + stderr
+	Output    string
 	Duration  time.Duration
 	Error     error
 }
@@ -24,21 +24,15 @@ type Builder struct {
 	cmd     *exec.Cmd
 }
 
-// New creates a Builder with specified timeout
-// Default timeout: 60 seconds
 func New(timeout time.Duration) *Builder {
 	return &Builder{
 		timeout: timeout,
 	}
 }
 
-// Run executes a build command with timeout and cancellation
-// Captures combined stdout + stderr
-// Returns Result with success status, output, and duration
 func (b *Builder) Run(ctx context.Context, buildCmd string, workingDir string) *Result {
 	start := time.Now()
 	
-	// Parse command string into program and args
 	program, args, err := b.parseCommand(buildCmd)
 	if err != nil {
 		return &Result{
@@ -53,7 +47,6 @@ func (b *Builder) Run(ctx context.Context, buildCmd string, workingDir string) *
 	cmd := exec.CommandContext(ctx, program, args...)
 	cmd.Dir = workingDir
 
-	// Set up output capture
 	output, err := b.captureOutput(ctx, cmd)
 	if err != nil {
 		return &Result{
@@ -72,7 +65,6 @@ func (b *Builder) Run(ctx context.Context, buildCmd string, workingDir string) *
 	}
 }
 
-// Cancel stops any in-progress build
 func (b *Builder) Cancel() {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -83,10 +75,7 @@ func (b *Builder) Cancel() {
 	}
 }
 
-// parseCommand splits command string into program and arguments
-// Supports quoted arguments and shell-like escaping
 func (b *Builder) parseCommand(command string) (string, []string, error) {
-	// Simple parsing - split by spaces, respecting quotes
 	var args []string
 	var current strings.Builder
 	inQuotes := false
@@ -113,7 +102,6 @@ func (b *Builder) parseCommand(command string) (string, []string, error) {
 			current.WriteRune(r)
 		}
 		
-		// Handle end of string
 		if i == len(command)-1 && current.Len() > 0 {
 			args = append(args, current.String())
 		}
@@ -126,9 +114,7 @@ func (b *Builder) parseCommand(command string) (string, []string, error) {
 	return args[0], args[1:], nil
 }
 
-// captureOutput runs command and captures combined stdout + stderr
 func (b *Builder) captureOutput(ctx context.Context, cmd *exec.Cmd) (string, error) {
-	// Create pipes for stdout and stderr
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return "", fmt.Errorf("failed to create stdout pipe: %w", err)
@@ -140,12 +126,10 @@ func (b *Builder) captureOutput(ctx context.Context, cmd *exec.Cmd) (string, err
 		return "", fmt.Errorf("failed to create stderr pipe: %w", err)
 	}
 
-	// Store command reference for cancellation
 	b.mu.Lock()
 	b.cmd = cmd
 	b.mu.Unlock()
 
-	// Start command
 	if err := cmd.Start(); err != nil {
 		stdout.Close()
 		stderr.Close()
@@ -155,7 +139,6 @@ func (b *Builder) captureOutput(ctx context.Context, cmd *exec.Cmd) (string, err
 		return "", fmt.Errorf("failed to start command: %w", err)
 	}
 
-	// Capture output with timeout
 	outputChan := make(chan string, 1)
 	errorChan := make(chan error, 1)
 
@@ -171,7 +154,6 @@ func (b *Builder) captureOutput(ctx context.Context, cmd *exec.Cmd) (string, err
 		}
 	}()
 
-	// Wait for completion with timeout
 	done := make(chan error, 1)
 	go func() {
 		done <- cmd.Wait()
@@ -179,7 +161,6 @@ func (b *Builder) captureOutput(ctx context.Context, cmd *exec.Cmd) (string, err
 
 	select {
 	case err := <-done:
-		// Command completed
 		b.mu.Lock()
 		b.cmd = nil
 		b.mu.Unlock()
@@ -196,22 +177,18 @@ func (b *Builder) captureOutput(ctx context.Context, cmd *exec.Cmd) (string, err
 		return output, nil
 
 	case <-ctx.Done():
-		// Context cancelled
 		b.Cancel()
 		return "", ctx.Err()
 
 	case <-time.After(b.timeout):
-		// Timeout reached
 		b.Cancel()
 		return "", fmt.Errorf("build timeout after %v", b.timeout)
 	}
 }
 
-// readOutput combines stdout and stderr into single string
 func (b *Builder) readOutput(stdout, stderr io.Reader) (string, error) {
 	var output strings.Builder
 	
-	// Create scanner for combined output
 	combined := io.MultiReader(stdout, stderr)
 	scanner := bufio.NewScanner(combined)
 	

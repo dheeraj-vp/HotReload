@@ -59,7 +59,7 @@ func TestManager_GracefulShutdown(t *testing.T) {
 	err := os.WriteFile(script, []byte(`#!/bin/sh
 trap 'echo "Received SIGTERM, exiting"; exit 0' TERM
 echo "Starting graceful server"
-sleep 30
+sleep 5
 `), 0755)
 	assert.NoError(t, err)
 

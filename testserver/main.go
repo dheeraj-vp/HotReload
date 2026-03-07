@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"runtime"
@@ -12,13 +11,11 @@ import (
 var version = "1.0.0"
 
 func main() {
-	// Get port from environment or default to 8080
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	// Setup routes
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, `
 <!DOCTYPE html>
@@ -98,7 +95,6 @@ func main() {
 		}`, version, runtime.Version(), time.Since(time.Now()).String(), 42)
 	})
 
-	// Start server
 	log.Printf("🚀 Demo server starting on http://localhost:%s", port)
 	log.Printf("📊 Health check: http://localhost:%s/health", port)
 	log.Printf("🔥 Hot reload enabled - edit .go files to restart!")
