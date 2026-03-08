@@ -39,12 +39,12 @@ func (s Status) String() string {
 }
 
 type Process struct {
-	cmd      *exec.Cmd
-	status   Status
-	pid      int
+	cmd       *exec.Cmd
+	status    Status
+	pid       int
 	startTime time.Time
-	mu       sync.RWMutex
-	cancel   context.CancelFunc
+	mu        sync.RWMutex
+	cancel    context.CancelFunc
 }
 
 type Manager struct {
@@ -141,7 +141,7 @@ func (m *Manager) PID() int {
 func (m *Manager) Uptime() time.Duration {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	if m.process.status != StatusRunning {
 		return 0
 	}
@@ -259,7 +259,7 @@ func (m *Manager) parseCommand(command string) (string, []string, error) {
 		default:
 			current.WriteRune(r)
 		}
-		
+
 		// Handle end of string
 		if i == len(command)-1 && current.Len() > 0 {
 			args = append(args, current.String())

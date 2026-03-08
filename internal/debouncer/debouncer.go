@@ -18,9 +18,9 @@ type Debouncer struct {
 // Typical value: 300ms
 func New(delay time.Duration) *Debouncer {
 	return &Debouncer{
-		delay:   delay,
-		input:   make(chan struct{}, 1),
-		output:  make(chan struct{}),
+		delay:  delay,
+		input:  make(chan struct{}, 1),
+		output: make(chan struct{}),
 	}
 }
 

@@ -123,7 +123,7 @@ func TestBuilder_CommandParsing(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.command, func(t *testing.T) {
 			program, args, err := builder.parseCommand(tt.command)
-			
+
 			if tt.expectErr {
 				assert.Error(t, err)
 			} else {

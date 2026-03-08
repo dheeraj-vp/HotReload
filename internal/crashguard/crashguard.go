@@ -17,7 +17,7 @@ type CrashGuard struct {
 }
 
 type Config struct {
-	MaxRestarts  int
+	MaxRestarts int
 	BaseDelay   time.Duration
 	MaxDelay    time.Duration
 	Window      time.Duration

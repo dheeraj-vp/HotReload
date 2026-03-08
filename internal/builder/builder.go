@@ -12,10 +12,10 @@ import (
 )
 
 type Result struct {
-	Success   bool
-	Output    string
-	Duration  time.Duration
-	Error     error
+	Success  bool
+	Output   string
+	Duration time.Duration
+	Error    error
 }
 
 type Builder struct {
@@ -32,7 +32,7 @@ func New(timeout time.Duration) *Builder {
 
 func (b *Builder) Run(ctx context.Context, buildCmd string, workingDir string) *Result {
 	start := time.Now()
-	
+
 	program, args, err := b.parseCommand(buildCmd)
 	if err != nil {
 		return &Result{
@@ -68,7 +68,7 @@ func (b *Builder) Run(ctx context.Context, buildCmd string, workingDir string) *
 func (b *Builder) Cancel() {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	
+
 	if b.cmd != nil && b.cmd.Process != nil {
 		b.cmd.Process.Kill()
 		b.cmd = nil
@@ -101,7 +101,7 @@ func (b *Builder) parseCommand(command string) (string, []string, error) {
 		default:
 			current.WriteRune(r)
 		}
-		
+
 		if i == len(command)-1 && current.Len() > 0 {
 			args = append(args, current.String())
 		}
@@ -119,7 +119,7 @@ func (b *Builder) captureOutput(ctx context.Context, cmd *exec.Cmd) (string, err
 	if err != nil {
 		return "", fmt.Errorf("failed to create stdout pipe: %w", err)
 	}
-	
+
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		stdout.Close()
@@ -164,10 +164,10 @@ func (b *Builder) captureOutput(ctx context.Context, cmd *exec.Cmd) (string, err
 		b.mu.Lock()
 		b.cmd = nil
 		b.mu.Unlock()
-		
+
 		output := <-outputChan
 		cmdErr := <-errorChan
-		
+
 		if err != nil {
 			return output, fmt.Errorf("command failed: %w", err)
 		}
@@ -188,18 +188,18 @@ func (b *Builder) captureOutput(ctx context.Context, cmd *exec.Cmd) (string, err
 
 func (b *Builder) readOutput(stdout, stderr io.Reader) (string, error) {
 	var output strings.Builder
-	
+
 	combined := io.MultiReader(stdout, stderr)
 	scanner := bufio.NewScanner(combined)
-	
+
 	for scanner.Scan() {
 		output.WriteString(scanner.Text())
 		output.WriteString("\n")
 	}
-	
+
 	if err := scanner.Err(); err != nil {
 		return output.String(), fmt.Errorf("failed to read output: %w", err)
 	}
-	
+
 	return output.String(), nil
 }

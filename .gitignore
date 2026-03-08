@@ -46,4 +46,4 @@ testserver/server
 coverage.out
 coverage.html
 
-docs/
+#docs/

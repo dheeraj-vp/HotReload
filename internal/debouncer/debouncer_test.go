@@ -82,7 +82,7 @@ func TestDebouncer_MultipleStart(t *testing.T) {
 	defer cancel()
 
 	debouncer := New(100 * time.Millisecond)
-	
+
 	// Starting multiple times should not cause issues
 	debouncer.Start(ctx)
 	debouncer.Start(ctx)

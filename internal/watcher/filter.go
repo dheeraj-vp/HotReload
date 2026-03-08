@@ -9,27 +9,27 @@ import (
 // Ignores: .git/, node_modules/, *.tmp, *.swp, .DS_Store, hidden files
 func ShouldIgnore(path string) bool {
 	base := filepath.Base(path)
-	
+
 	// .git directory specifically (but allow .gitignore file)
 	if strings.Contains(path, string(filepath.Separator)+".git"+string(filepath.Separator)) ||
-	   strings.HasSuffix(path, string(filepath.Separator)+".git") {
+		strings.HasSuffix(path, string(filepath.Separator)+".git") {
 		return true
 	}
-	
+
 	// Hidden files and directories (starting with .) - except .gitignore
 	if strings.HasPrefix(base, ".") && base != ".gitignore" {
 		return true
 	}
-	
+
 	// Common ignore directories
 	ignoreDirs := []string{"node_modules", "vendor", "bin", "dist", "build"}
 	for _, dir := range ignoreDirs {
 		if strings.Contains(path, string(filepath.Separator)+dir+string(filepath.Separator)) ||
-		   strings.HasSuffix(path, string(filepath.Separator)+dir) {
+			strings.HasSuffix(path, string(filepath.Separator)+dir) {
 			return true
 		}
 	}
-	
+
 	// Temporary files
 	ignoreExts := []string{".tmp", ".swp", ".swo", ".bak", ".log"}
 	ext := filepath.Ext(base)
@@ -38,7 +38,7 @@ func ShouldIgnore(path string) bool {
 			return true
 		}
 	}
-	
+
 	// Specific files
 	ignoreFiles := []string{".DS_Store", "Thumbs.db"}
 	for _, file := range ignoreFiles {
@@ -46,7 +46,7 @@ func ShouldIgnore(path string) bool {
 			return true
 		}
 	}
-	
+
 	return false
 }
 

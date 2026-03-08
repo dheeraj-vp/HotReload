@@ -10,9 +10,9 @@ import (
 func TestCrashGuard_ShouldRestart(t *testing.T) {
 	config := Config{
 		MaxRestarts: 3,
-		BaseDelay:  1 * time.Second,
-		MaxDelay:   30 * time.Second,
-		Window:     5 * time.Minute,
+		BaseDelay:   1 * time.Second,
+		MaxDelay:    30 * time.Second,
+		Window:      5 * time.Minute,
 	}
 	cg := New(config)
 
@@ -31,8 +31,8 @@ func TestCrashGuard_ShouldRestart(t *testing.T) {
 func TestCrashGuard_ExponentialBackoff(t *testing.T) {
 	config := Config{
 		MaxRestarts: 5,
-		BaseDelay:  1 * time.Second,
-		MaxDelay:   30 * time.Second,
+		BaseDelay:   1 * time.Second,
+		MaxDelay:    30 * time.Second,
 	}
 	cg := New(config)
 
@@ -55,8 +55,8 @@ func TestCrashGuard_ExponentialBackoff(t *testing.T) {
 func TestCrashGuard_MaxBackoffLimit(t *testing.T) {
 	config := Config{
 		MaxRestarts: 10,
-		BaseDelay:  1 * time.Second,
-		MaxDelay:   10 * time.Second,
+		BaseDelay:   1 * time.Second,
+		MaxDelay:    10 * time.Second,
 	}
 	cg := New(config)
 
@@ -69,7 +69,7 @@ func TestCrashGuard_MaxBackoffLimit(t *testing.T) {
 func TestCrashGuard_Reset(t *testing.T) {
 	config := Config{
 		MaxRestarts: 2,
-		BaseDelay:  1 * time.Second,
+		BaseDelay:   1 * time.Second,
 	}
 	cg := New(config)
 
@@ -86,8 +86,8 @@ func TestCrashGuard_Reset(t *testing.T) {
 func TestCrashGuard_TimeWindowReset(t *testing.T) {
 	config := Config{
 		MaxRestarts: 1,
-		BaseDelay:  1 * time.Second,
-		Window:     100 * time.Millisecond,
+		BaseDelay:   1 * time.Second,
+		Window:      100 * time.Millisecond,
 	}
 	cg := New(config)
 
@@ -103,7 +103,7 @@ func TestCrashGuard_TimeWindowReset(t *testing.T) {
 func TestCrashGuard_GetStats(t *testing.T) {
 	config := Config{
 		MaxRestarts: 5,
-		BaseDelay:  2 * time.Second,
+		BaseDelay:   2 * time.Second,
 	}
 	cg := New(config)
 
@@ -126,12 +126,12 @@ func TestCrashGuard_DefaultConfig(t *testing.T) {
 
 	assert.True(t, cg.ShouldRestart())
 	assert.Equal(t, 1*time.Second, cg.GetBackoffDelay())
-	
+
 	for i := 0; i < 9; i++ {
 		cg.RecordCrash()
 		assert.True(t, cg.ShouldRestart())
 	}
-	
+
 	cg.RecordCrash()
 	assert.False(t, cg.ShouldRestart())
 }

@@ -46,10 +46,10 @@ func TestFileWatcher_BasicEvents(t *testing.T) {
 			break
 		}
 	}
-	
+
 	require.NotEmpty(t, events, "Should receive at least one event for file creation")
 	assert.Equal(t, testFile, events[0].Path)
-	assert.True(t, events[0].Op == OpCreate || events[0].Op == OpWrite, 
+	assert.True(t, events[0].Op == OpCreate || events[0].Op == OpWrite,
 		"Expected CREATE or WRITE, got %v", events[0].Op)
 
 	// Test 2: Modify file (if still exists)

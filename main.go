@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -43,8 +44,8 @@ func main() {
 	logger.Setup(logLevel)
 
 	slog.Info("hotreload starting", "root", config.Root)
-	slog.Info("config validated", 
-		"build_cmd", config.BuildCmd, 
+	slog.Info("config validated",
+		"build_cmd", config.BuildCmd,
 		"exec_cmd", config.ExecCmd)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -72,14 +73,58 @@ func main() {
 
 	cg := crashguard.New(crashguard.Config{
 		MaxRestarts: 5,
-		BaseDelay:  1 * time.Second,
-		MaxDelay:   30 * time.Second,
-		Window:     5 * time.Minute,
+		BaseDelay:   1 * time.Second,
+		MaxDelay:    30 * time.Second,
+		Window:      5 * time.Minute,
 	})
 
 	p := process.New()
 
 	go w.Start(ctx)
+
+	// Trigger initial build on startup
+	slog.Info("triggering initial build")
+	d.Trigger()
+
+	// Track if build is in progress
+	buildInProgress := false
+	var buildMu sync.Mutex
+
+	// Monitor process crashes
+	go func() {
+		ticker := time.NewTicker(500 * time.Millisecond)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if p.Status() == process.StatusFailed {
+					slog.Warn("server crash detected")
+					cg.RecordCrash()
+					stats := cg.GetStats()
+					slog.Warn("server crash recorded",
+						"crash_count", stats.CrashCount,
+						"backoff_delay", stats.BackoffDelay.String(),
+						"can_restart", stats.CanRestart)
+
+					// Trigger restart if allowed
+					if stats.CanRestart && stats.BackoffDelay > 0 {
+						slog.Info("waiting for backoff delay before restart", "delay", stats.BackoffDelay.String())
+						select {
+						case <-time.After(stats.BackoffDelay):
+							d.Trigger()
+						case <-ctx.Done():
+							return
+						}
+					} else if stats.CanRestart {
+						d.Trigger()
+					}
+				}
+			}
+		}
+	}()
 
 	for {
 		select {
@@ -90,29 +135,45 @@ func main() {
 		case event := <-w.Events():
 			if watcher.IsGoFile(event.Path) {
 				slog.Debug("go file changed", "path", event.Path, "op", event.Op)
+
+				buildMu.Lock()
+				if buildInProgress {
+					slog.Info("cancelling previous build")
+					b.Cancel()
+				}
+				buildMu.Unlock()
+
 				d.Trigger()
 			}
 
 		case <-d.Output():
+			buildMu.Lock()
+			buildInProgress = true
+			buildMu.Unlock()
+
 			slog.Info("build starting", "cmd", config.BuildCmd)
 			result := b.Run(ctx, config.BuildCmd, config.Root)
-			
+
+			buildMu.Lock()
+			buildInProgress = false
+			buildMu.Unlock()
+
 			if result.Success {
-				slog.Info("build succeeded", 
+				slog.Info("build succeeded",
 					"duration", result.Duration.String(),
 					"output", result.Output)
-				
+
 				if cg.ShouldRestart() {
 					err := p.Start(ctx, config.ExecCmd, config.Root)
 					if err != nil {
 						slog.Error("failed to start server", "error", err)
 						cg.RecordCrash()
 						stats := cg.GetStats()
-						slog.Warn("server crash recorded", 
+						slog.Warn("server crash recorded",
 							"crash_count", stats.CrashCount,
 							"backoff_delay", stats.BackoffDelay.String(),
 							"can_restart", stats.CanRestart)
-						
+
 						if stats.BackoffDelay > 0 {
 							slog.Info("waiting for backoff delay", "delay", stats.BackoffDelay.String())
 							select {
@@ -122,21 +183,21 @@ func main() {
 							}
 						}
 					} else {
-						slog.Info("server started", 
+						slog.Info("server started",
 							"pid", p.PID(),
 							"uptime", p.Uptime().String())
 						cg.Reset()
 					}
 				} else {
 					stats := cg.GetStats()
-					slog.Error("restart blocked", 
+					slog.Error("restart blocked",
 						"crash_count", stats.CrashCount,
 						"max_restarts", 5,
 						"backoff_delay", stats.BackoffDelay.String())
 					slog.Info("manual intervention required - server crashed too many times")
 				}
 			} else {
-				slog.Error("build failed", 
+				slog.Error("build failed",
 					"duration", result.Duration.String(),
 					"error", result.Error,
 					"output", result.Output)

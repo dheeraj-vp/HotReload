@@ -7,16 +7,16 @@ import (
 )
 
 type Config struct {
-	Root      string // absolute path to project root
-	BuildCmd  string // full build command
-	ExecCmd   string // full execution command
+	Root     string // absolute path to project root
+	BuildCmd string // full build command
+	ExecCmd  string // full execution command
 }
 
 // ParseArgs parses CLI arguments and returns validated config
 // Returns error if any required flag is missing or invalid
 func ParseArgs(args []string) (*Config, error) {
 	config := &Config{}
-	
+
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--root":
@@ -49,7 +49,7 @@ func ParseArgs(args []string) (*Config, error) {
 			return nil, fmt.Errorf("unknown flag: %s", args[i])
 		}
 	}
-	
+
 	return config, nil
 }
 
@@ -65,7 +65,7 @@ func (c *Config) Validate() error {
 	if c.ExecCmd == "" {
 		return fmt.Errorf("required flag --exec not provided")
 	}
-	
+
 	// Convert to absolute path
 	if !filepath.IsAbs(c.Root) {
 		abs, err := filepath.Abs(c.Root)
@@ -74,7 +74,7 @@ func (c *Config) Validate() error {
 		}
 		c.Root = abs
 	}
-	
+
 	// Check if directory exists
 	info, err := os.Stat(c.Root)
 	if err != nil {
@@ -86,7 +86,7 @@ func (c *Config) Validate() error {
 	if !info.IsDir() {
 		return fmt.Errorf("root must be a directory, got file: %s", c.Root)
 	}
-	
+
 	return nil
 }
 
